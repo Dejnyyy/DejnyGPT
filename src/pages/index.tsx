@@ -7,6 +7,7 @@ import {
   SunIcon,
   MoonIcon,
   PhotoIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 type Msg = {
@@ -117,7 +118,16 @@ export default function Home({
   
     inputEl.value = "";
   }
-  
+  async function deleteChat(id: string) {
+    // Optimistically remove from UI
+    setChats((prev) => prev.filter((c) => c.id !== id));
+    if (chatId === id) {
+      setChatId(null);
+      setMessages([]);
+    }
+    // Call API
+    await fetch(`/api/chat/${id}`, { method: "DELETE" });
+  }
 
   // Create a new chat
   async function createNewChat() {
@@ -184,22 +194,31 @@ export default function Home({
             />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto space-y-1">
           {chats.map((c) => (
-            <button
+            <div
               key={c.id}
-              onClick={() => setChatId(c.id)}
-              className={`w-full text-left p-3 border-b truncate ${cls(
+              className={`flex items-center justify-between p-2 border-b truncate cursor-pointer ${cls(
                 "border-gray-200 hover:bg-gray-100 text-gray-600",
                 "border-gray-700 hover:bg-gray-700 text-gray-200"
               )} ${
                 chatId === c.id ? cls("bg-gray-200", "bg-gray-700") : ""
               }`}
+              onClick={() => setChatId(c.id)}
             >
-              {c.preview}
-            </button>
+              <span className="flex-1 truncate">{c.preview}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(c.id);
+                }}
+                className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-700 text-red-500 hover:text-white"
+              >
+                <TrashIcon className="h-4 w-4 " />
+              </button>
+            </div>
           ))}
-        </nav>
+       </nav>
       </aside>
 
       {/* Chat area */}
