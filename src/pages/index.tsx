@@ -1,115 +1,335 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+// src/pages/index.tsx
+"use client";
+import { useState, useRef, useEffect } from "react";
+import {
+  PaperAirplaneIcon,
+  PlusIcon,
+  SunIcon,
+  MoonIcon,
+  PhotoIcon,
+} from "@heroicons/react/24/outline";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  isImage?: boolean;
+};
+type ChatItem = { id: string; preview: string; createdAt: string };
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+export default function Home({
+  theme,
+  setTheme,
+}: {
+  theme: "light" | "dark";
+  setTheme: (t: "light" | "dark") => void;
+}) {
+  const [chats, setChats] = useState<ChatItem[]>([]);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
 
-export default function Home() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Inline light/dark class helper
+  const cls = (light: string, dark: string) =>
+    theme === "dark" ? dark : light;
+
+  // Fetch existing chats
+  useEffect(() => {
+    fetch("/api/chat")
+      .then((r) => r.json())
+      .then((data: ChatItem[]) => setChats(data));
+  }, []);
+
+  // Load messages when chatId changes
+  useEffect(() => {
+    if (!chatId) return;
+    fetch(`/api/chat/${chatId}`)
+      .then((r) => r.json())
+      .then((data: { messages: Msg[] }) => {
+        setMessages(data.messages);
+      });
+  }, [chatId]);
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+    });
+  }, [messages]);
+
+  // Convert File → data URL
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result as string);
+      reader.onerror = () => rej(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+  async function sendImage() {
+    const inputEl = fileInputRef.current;
+    if (!inputEl?.files?.[0]) return;
+    const file = inputEl.files[0];
+  
+    // 1️⃣ upload to /api/upload
+    const form = new FormData();
+    form.append("image", file);
+    const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
+    const { url: imageUrl } = await uploadRes.json();
+  
+    // 2️⃣ show it locally
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: imageUrl, isImage: true },
+    ]);
+  
+    // 3️⃣ ensure chat exists
+    let id = chatId;
+    if (!id) {
+      const { chatId: newId } = await fetch("/api/chat", { method: "POST" }).then(r => r.json());
+      id = newId;
+      setChatId(id);
+      const updated = await fetch("/api/chat").then(r => r.json());
+      setChats(updated);
+    }
+  
+    // 4️⃣ send the public URL to your GPT endpoint
+    setIsTyping(true);
+    const { reply } = await fetch(`/api/chat/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl }),   // note: imageUrl, not imageDataUrl
+    }).then(r => r.json());
+    setIsTyping(false);
+  
+    // 5️⃣ display GPT’s reply
+    setMessages((m) => [
+      ...m,
+      {
+        role: "assistant",
+        content: reply,
+        isImage: reply.startsWith("http") && /\.(png|jpe?g|gif)$/.test(reply),
+      },
+    ]);
+  
+    inputEl.value = "";
+  }
+  
+
+  // Create a new chat
+  async function createNewChat() {
+    const { chatId: newId } = await fetch("/api/chat", {
+      method: "POST",
+    }).then((r) => r.json());
+    setChatId(newId);
+    setMessages([]);
+    const updated = await fetch("/api/chat").then((r) => r.json());
+    setChats(updated);
+  }
+
+  // Send a text message
+  async function send() {
+    if (!input.trim()) return;
+    setMessages((m) => [...m, { role: "user", content: input }]);
+
+    // ensure chat exists
+    let id = chatId;
+    if (!id) {
+      const { chatId: newId } = await fetch("/api/chat", {
+        method: "POST",
+      }).then((r) => r.json());
+      id = newId;
+      setChatId(id);
+      const updated = await fetch("/api/chat").then((r) => r.json());
+      setChats(updated);
+    }
+
+    setIsTyping(true);
+    const { reply } = await fetch(`/api/chat/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: input }),
+    }).then((r) => r.json());
+    setIsTyping(false);
+
+    setMessages((m) => [...m, { role: "assistant", content: reply }]);
+    setInput("");
+  }
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/pages/index.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className={`flex h-screen ${cls("bg-gray-50", "bg-gray-900")}`}>
+      {/* Sidebar */}
+      <aside
+        className={`w-60 border-r flex flex-col ${cls(
+          "bg-white border-gray-200",
+          "bg-gray-800 border-gray-700"
+        )}`}
+      >
+        <div
+          className={`p-4 border-b flex items-center justify-between ${cls(
+            "border-gray-200",
+            "border-gray-700"
+          )}`}
+        >
+          <h1 className={`text-lg font-semibold ${cls( "text-gray-600","text-gray-200")}`}>DejnyGPT</h1>
+          <button
+            onClick={createNewChat}
+            className={`${cls("hover:bg-gray-100", "hover:bg-gray-700")} p-1 rounded-full`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            <PlusIcon
+              className={cls("h-5 w-5 text-gray-600", "h-5 w-5 text-gray-300")}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <nav className="flex-1 overflow-y-auto">
+          {chats.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setChatId(c.id)}
+              className={`w-full text-left p-3 border-b truncate ${cls(
+                "border-gray-200 hover:bg-gray-100 text-gray-600",
+                "border-gray-700 hover:bg-gray-700 text-gray-200"
+              )} ${
+                chatId === c.id ? cls("bg-gray-200", "bg-gray-700") : ""
+              }`}
+            >
+              {c.preview}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header
+          className={`p-4 flex items-center justify-between ${cls(
+            "bg-white border-b border-gray-200",
+            "bg-gray-800 border-gray-700"
+          )}`}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          <h2 className={`text-lg font-medium ${cls("text-gray-600","text-gray-200")}`}>
+            {chatId ? `Chat ${chatId.slice(0, 8)}` : "New Chat"}
+          </h2>
+          <button
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className={`${cls("hover:bg-gray-100", "hover:bg-gray-700")} p-2 rounded-full`}
+          >
+            {theme === "light" ? (
+              <MoonIcon className="h-6 w-6 text-gray-600" />
+            ) : (
+              <SunIcon className="h-6 w-6 text-yellow-400" />
+            )}
+          </button>
+        </header>
+
+        {/* Messages */}
+        <main
+          ref={scrollRef}
+          className={`flex-1 flex flex-col overflow-y-auto p-6 gap-4 ${cls(
+            "bg-gray-50",
+            "bg-gray-900"
+          )}`}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`px-4 py-2 rounded-3xl break-words max-w-[60%] ${
+                m.role === "user"
+                  ? "self-end bg-blue-600 text-white"
+                  : "self-start bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200"
+              }`}
+            >
+              {m.isImage ? (
+                <img
+                  src={m.content}
+                  alt="upload"
+                  className="rounded-lg max-w-full"
+                />
+              ) : (
+                m.content
+              )}
+            </div>
+          ))}
+
+          {/* typing indicator */}
+          {isTyping && (
+            <div
+              className={`px-4 py-2 rounded-3xl max-w-[60%] self-start ${cls(
+                "bg-gray-200 text-gray-900",
+                "bg-gray-700 text-gray-200"
+              )}`}
+            >
+              <div className="flex items-center space-x-1 h-4">
+                {[0, 150, 300].map((delay) => (
+                  <span
+                    key={delay}
+                    className={`${cls("bg-gray-600", "bg-gray-300")} w-2 h-2 rounded-full animate-bounce`}
+                    style={{
+                      animationDelay: `${delay}ms`,
+                      animationIterationCount: "infinite",
+                      animationDuration: "0.8s",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Input bar */}
+        <div
+          className={`p-4 flex items-center gap-2 ${cls(
+            "bg-white border-t border-gray-200",
+            "bg-gray-800 border-gray-700"
+          )}`}
         >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          {/* Image upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={sendImage}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className={`${cls("hover:bg-gray-100", "hover:bg-gray-700")} p-2 rounded-full`}
+          >
+            <PhotoIcon
+              className={cls("h-6 w-6 text-gray-600", "h-6 w-6 text-gray-300")}
+            />
+          </button>
+
+          {/* Text input */}
+          <textarea
+            className={`flex-1 resize-none px-3 py-2 border rounded-md focus:outline-none focus:ring-2  ${cls(
+              "border-gray-300 bg-white text-black focus:ring-black",
+              "border-gray-600 bg-gray-700 text-white focus:ring-white"
+            )}`}
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+          />
+
+          {/* Send text */}
+          <button
+            onClick={send}
+            className={`p-2 ${cls("bg-gray-300 hover:bg-black text-black hover:text-white","bg-black hover:bg-white text-white hover:text-black")} rounded-lg transition`}
+          >
+            <PaperAirplaneIcon className="h-5 w-5 rotate" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
