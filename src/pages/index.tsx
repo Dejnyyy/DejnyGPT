@@ -9,7 +9,7 @@ import {
   PhotoIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-
+import Image from "next/image";
 import { marked } from "marked";
 import clsx from "clsx";
 
@@ -277,38 +277,40 @@ export default function Home({
           )}`}
         >
          {messages.length === 0 ? (
-  <div className="flex flex-col items-center justify-center text-center h-full opacity-70">
-    <div className="text-4xl mb-2">👨‍💻</div>
-    <h2 className="text-xl font-semibold">Welcome to DejnyGPT</h2>
-    <p className="text-sm text-gray-400 mt-1">
-      Start a conversation by asking a question or uploading an image.
-    </p>
-  </div>
-) : (
-  messages.map((m, i) => (
-    <div
-      key={i}
-      className={`px-4 py-2 rounded-3xl break-words max-w-[60%] ${
-        m.role === "user"
-          ? "self-end bg-blue-600 text-white"
-          : "self-start bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200"
-      }`}
-    >
-      {m.isImage ? (
-        <img
-          src={m.content}
-          alt="upload"
-          className="rounded-lg max-w-full"
-        />
-      ) : (
-        <div
-          className="whitespace-pre-line prose prose-sm dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: m.content }}
-        />
-      )}
-    </div>
-  ))
-)}
+            <div className="flex flex-col items-center justify-center text-center h-full opacity-70">
+              <div className="text-4xl mb-2">👨‍💻</div>
+              <h2 className={`text-xl ${theme === "dark"?"text-gray-50":"text-gray-900"} font-semibold`}>Welcome to DejnyGPT</h2>
+              <p className={`text-sm ${theme === "dark"?"text-gray-300":"text-gray-600"} mt-1`}>
+                Start a conversation by asking a question or uploading an image.
+              </p>
+            </div>
+          ) : (
+            messages.map((m, i) => (
+              <div
+                key={i}
+                className={`px-4 py-2 rounded-3xl break-words max-w-[60%] ${
+                  m.role === "user"
+                    ? "self-end bg-blue-600 text-white"
+                    : "self-start bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200"
+                }`}
+              >
+                {m.isImage ? (
+                  <Image
+                    src={m.content}
+                    alt="upload"
+                    className="rounded-lg max-w-96 max-h-64 bg-transparent"
+                    width={1000}
+                    height={1000}
+                  />
+                ) : (
+                  <div
+                    className="whitespace-pre-line prose  prose-sm dark:prose-invert"
+                    dangerouslySetInnerHTML={{ __html: m.content }}
+                  />
+                )}
+              </div>
+            ))
+          )}
 
           {/* typing indicator */}
           {isTyping && (
@@ -355,7 +357,7 @@ export default function Home({
             className={`${cls("hover:bg-gray-100", "hover:bg-gray-700")} p-2 rounded-full`}
           >
             <PhotoIcon
-              className={cls("h-6 w-6 text-gray-600", "h-6 w-6 text-gray-300")}
+              className={cls("h-6 w-6 text-gray-600 cursor-pointer", "h-6 w-6 text-gray-300 cursor-pointer")}
             />
           </button>
 
