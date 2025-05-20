@@ -10,6 +10,8 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
+import { marked } from "marked";
+
 type Msg = {
   role: "user" | "assistant";
   content: string;
@@ -70,54 +72,62 @@ export default function Home({
       reader.readAsDataURL(file);
     });
   }
+
   async function sendImage() {
     const inputEl = fileInputRef.current;
     if (!inputEl?.files?.[0]) return;
     const file = inputEl.files[0];
   
-    // 1️⃣ upload to /api/upload
+    // Upload to /api/upload
     const form = new FormData();
     form.append("image", file);
     const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
     const { url: imageUrl } = await uploadRes.json();
   
-    // 2️⃣ show it locally
+    // Show image locally
     setMessages((m) => [
       ...m,
       { role: "user", content: imageUrl, isImage: true },
     ]);
   
-    // 3️⃣ ensure chat exists
+    // Ensure chat exists
     let id = chatId;
     if (!id) {
-      const { chatId: newId } = await fetch("/api/chat", { method: "POST" }).then(r => r.json());
+      const { chatId: newId } = await fetch("/api/chat", {
+        method: "POST",
+      }).then((r) => r.json());
       id = newId;
       setChatId(id);
-      const updated = await fetch("/api/chat").then(r => r.json());
+      const updated = await fetch("/api/chat").then((r) => r.json());
       setChats(updated);
     }
   
-    // 4️⃣ send the public URL to your GPT endpoint
+    // Send image URL to GPT endpoint
     setIsTyping(true);
     const { reply } = await fetch(`/api/chat/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageUrl }),   // note: imageUrl, not imageDataUrl
-    }).then(r => r.json());
+      body: JSON.stringify({ imageUrl }),
+    }).then((r) => r.json());
     setIsTyping(false);
   
-    // 5️⃣ display GPT’s reply
+    // ✅ Define htmlReply AFTER getting reply
+    const htmlReply = await marked(reply);
+  
+    // Show GPT response
     setMessages((m) => [
       ...m,
       {
         role: "assistant",
-        content: reply,
+        content: htmlReply,
         isImage: reply.startsWith("http") && /\.(png|jpe?g|gif)$/.test(reply),
       },
     ]);
   
     inputEl.value = "";
   }
+  
+
   async function deleteChat(id: string) {
     // Optimistically remove from UI
     setChats((prev) => prev.filter((c) => c.id !== id));
@@ -139,13 +149,13 @@ export default function Home({
     const updated = await fetch("/api/chat").then((r) => r.json());
     setChats(updated);
   }
-
-  // Send a text message
   async function send() {
     if (!input.trim()) return;
+  
+    // Show user message instantly
     setMessages((m) => [...m, { role: "user", content: input }]);
-
-    // ensure chat exists
+  
+    // Ensure chat exists
     let id = chatId;
     if (!id) {
       const { chatId: newId } = await fetch("/api/chat", {
@@ -156,18 +166,27 @@ export default function Home({
       const updated = await fetch("/api/chat").then((r) => r.json());
       setChats(updated);
     }
-
+  
     setIsTyping(true);
+  
+    // ✅ Fetch assistant reply
     const { reply } = await fetch(`/api/chat/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: input }),
     }).then((r) => r.json());
+  
     setIsTyping(false);
-
-    setMessages((m) => [...m, { role: "assistant", content: reply }]);
-    setInput("");
+  
+    // ✅ Now use `marked()` AFTER you have the reply
+    const htmlReply = await marked(reply);
+  
+    // Add assistant response
+    setMessages((m) => [...m, { role: "assistant", content: htmlReply }]);
+  
+    setInput(""); // Clear input
   }
+  
 
   return (
     <div className={`flex h-screen ${cls("bg-gray-50", "bg-gray-900")}`}>
@@ -269,7 +288,10 @@ export default function Home({
                   className="rounded-lg max-w-full"
                 />
               ) : (
-                m.content
+                <div
+                className="whitespace-pre-line prose prose-sm dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: m.content }}
+              />
               )}
             </div>
           ))}
@@ -339,14 +361,20 @@ export default function Home({
               }
             }}
           />
-
           {/* Send text */}
           <button
-            onClick={send}
-            className={`p-2 ${cls("bg-gray-300 hover:bg-black text-black hover:text-white","bg-black hover:bg-white text-white hover:text-black")} rounded-lg transition`}
-          >
-            <PaperAirplaneIcon className="h-5 w-5 rotate" />
-          </button>
+          disabled={isTyping === true}
+          onClick={send}
+          className={cls(
+            "p-2 rounded-lg transition",
+            isTyping === true
+              ? "bg-gray-300 text-black cursor-not-allowed"
+              : "bg-black hover:bg-white text-white hover:text-black"
+          )}
+        >
+          <PaperAirplaneIcon className="h-5 w-5 rotate" />
+        </button>
+
         </div>
       </div>
     </div>
