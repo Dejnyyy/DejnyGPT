@@ -276,29 +276,39 @@ export default function Home({
             "bg-gray-900"
           )}`}
         >
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`px-4 py-2 rounded-3xl break-words max-w-[60%] ${
-                m.role === "user"
-                  ? "self-end bg-blue-600 text-white"
-                  : "self-start bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200"
-              }`}
-            >
-              {m.isImage ? (
-                <img
-                  src={m.content}
-                  alt="upload"
-                  className="rounded-lg max-w-full"
-                />
-              ) : (
-                <div
-                className="whitespace-pre-line prose prose-sm dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: m.content }}
-              />
-              )}
-            </div>
-          ))}
+         {messages.length === 0 ? (
+  <div className="flex flex-col items-center justify-center text-center h-full opacity-70">
+    <div className="text-4xl mb-2">👨‍💻</div>
+    <h2 className="text-xl font-semibold">Welcome to DejnyGPT</h2>
+    <p className="text-sm text-gray-400 mt-1">
+      Start a conversation by asking a question or uploading an image.
+    </p>
+  </div>
+) : (
+  messages.map((m, i) => (
+    <div
+      key={i}
+      className={`px-4 py-2 rounded-3xl break-words max-w-[60%] ${
+        m.role === "user"
+          ? "self-end bg-blue-600 text-white"
+          : "self-start bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200"
+      }`}
+    >
+      {m.isImage ? (
+        <img
+          src={m.content}
+          alt="upload"
+          className="rounded-lg max-w-full"
+        />
+      ) : (
+        <div
+          className="whitespace-pre-line prose prose-sm dark:prose-invert"
+          dangerouslySetInnerHTML={{ __html: m.content }}
+        />
+      )}
+    </div>
+  ))
+)}
 
           {/* typing indicator */}
           {isTyping && (
@@ -370,13 +380,13 @@ export default function Home({
             disabled={isTyping}
             onClick={send}
             className={clsx(
-              "p-2 rounded-2xl transition",
-              isTyping && "bg-gray-600 text-black hover:bg-black hover:text-white cursor-not-allowed",
+              "p-2 rounded-2xl transition cursor-pointer w-12 h-12",
+              isTyping && "bg-gray-500 text-black hover:bg-black hover:text-white cursor-not-allowed",
               !isTyping && theme === "light" && "bg-black text-white hover:bg-gray-300 hover:text-black",
               !isTyping && theme === "dark" && "bg-white text-black hover:bg-black hover:text-white"
             )}
           >
-            <PaperAirplaneIcon className="h-10 w-10 p-1 rotate" />
+            <PaperAirplaneIcon className="h-8 w-8 rotate" />
           </button>
 
 
