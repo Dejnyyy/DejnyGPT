@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 import { marked } from "marked";
+import clsx from "clsx";
 
 type Msg = {
   role: "user" | "assistant";
@@ -366,17 +367,18 @@ export default function Home({
           />
           {/* Send text */}
           <button
-          disabled={isTyping === true}
-          onClick={send}
-          className={cls(
-            "p-2 rounded-lg transition",
-            isTyping === true
-              ? "bg-gray-300 text-black cursor-not-allowed"
-              : "bg-black hover:bg-white text-white hover:text-black"
-          )}
-        >
-          <PaperAirplaneIcon className="h-5 w-5 rotate" />
-        </button>
+            disabled={isTyping}
+            onClick={send}
+            className={clsx(
+              "p-2 rounded-2xl transition",
+              isTyping && "bg-gray-600 text-black hover:bg-black hover:text-white cursor-not-allowed",
+              !isTyping && theme === "light" && "bg-black text-white hover:bg-gray-300 hover:text-black",
+              !isTyping && theme === "dark" && "bg-white text-black hover:bg-black hover:text-white"
+            )}
+          >
+            <PaperAirplaneIcon className="h-10 w-10 p-1 rotate" />
+          </button>
+
 
         </div>
       </div>
