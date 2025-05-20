@@ -92,15 +92,18 @@ export default function Home({
   
     // Ensure chat exists
     let id = chatId;
+   // if chat doesn't exist, create one
     if (!id) {
       const { chatId: newId } = await fetch("/api/chat", {
         method: "POST",
-      }).then((r) => r.json());
+      }).then(r => r.json());
       id = newId;
       setChatId(id);
-      const updated = await fetch("/api/chat").then((r) => r.json());
+
+      const updated = await fetch("/api/chat").then(r => r.json());
       setChats(updated);
     }
+
   
     // Send image URL to GPT endpoint
     setIsTyping(true);
