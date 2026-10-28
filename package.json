@@ -14,7 +14,7 @@
     "clsx": "^2.1.1",
     "formidable": "^3.5.4",
     "marked": "^15.0.11",
-    "next": "15.3.1",
+    "next": "15.3.9",
     "openai": "^4.97.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -27,7 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.3.1",
+    "eslint-config-next": "15.3.9",
     "prisma": "^6.7.0",
     "tailwindcss": "^4",
     "typescript": "^5"
